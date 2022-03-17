@@ -1,8 +1,7 @@
 import SequraPCI from '../sequraPCI';
-import { JSDOM } from 'jsdom';
 
 describe('SequraPCI', () => {
-  let paymentForm;
+  let paymentForm: PaymentFormMountResult;
   beforeAll(() => (document.body.innerHTML = "<div id='my-container'></div>"));
   afterEach(() => (document.getElementById('my-container').innerHTML = ''));
   afterEach(() => paymentForm.unbind());
@@ -25,6 +24,7 @@ describe('SequraPCI', () => {
 
   describe('callbacks', () => {
     const callbackNames = [
+      'onFormErrors',
       'onCardDataFulfilled',
       'onPaymentSuccessful',
       'onPaymentFailed',
@@ -56,23 +56,27 @@ describe('SequraPCI', () => {
 
   test('#unbind removes event listeners', async () => {
     const onFormSubmitted = jest.fn();
-    await new Promise(async (finish) => {
+    let numEventsFired = 0;
+    let finish:(_value: unknown) => void;
+
+    await new Promise((resolve) => {
       paymentForm = SequraPCI.paymentForm({ url, onFormSubmitted }).mount('my-container');
-      let numEventsFired = 0;
-      await new Promise((resolve) => {
-        window.addEventListener('message', () => {
-          numEventsFired++;
-          if(numEventsFired === 1) {
-            paymentForm.unbind()
-            resolve(null)
-          } else {
-            finish(null)
-          }
-        }, false)
-        window.postMessage(JSON.stringify({ action: 'Sequra.mufasa_submitted' }), '*')
-      })
+      window.addEventListener('message', () => {
+        numEventsFired++;
+        if(numEventsFired === 1) {
+          paymentForm.unbind()
+          resolve(null)
+        } else if(finish) {
+          finish(null)
+        }
+      }, false)
       window.postMessage(JSON.stringify({ action: 'Sequra.mufasa_submitted' }), '*')
     })
+    await new Promise((resolve) => {
+      finish = resolve
+      window.postMessage(JSON.stringify({ action: 'Sequra.mufasa_submitted' }), '*')
+    })
+    expect(numEventsFired).toEqual(2)
     expect(onFormSubmitted).toHaveBeenCalledTimes(1)
   })
 });

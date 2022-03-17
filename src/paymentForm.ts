@@ -1,24 +1,26 @@
 import { createElement, listenPostMessages } from './utils';
 
-const voidFunction = () => {};
+const voidFunction = () => {
+  // noop
+};
 
 const paymentForm = ({
   url,
   onCardDataFulfilled = voidFunction,
+  onFormErrors = voidFunction,
   onPaymentFailed = voidFunction,
   onPaymentSuccessful = voidFunction,
   onFormSubmitted = voidFunction,
   onScaRequired = voidFunction,
   onScaLoaded = voidFunction,
   onScaClosed = voidFunction,
-}: PaymentFormConfig) => {
-  const mount = (domId: string, { hidden = false } = {}) => {
-    let mufasaIframe: HTMLIFrameElement;
+}: PaymentFormConfig):PaymentFormResult => {
+  const mount = (domId: string, { hidden = false } = {}):PaymentFormMountResult => {
     let scaWrapper: HTMLElement;
     let scaIframe: HTMLIFrameElement;
 
-    var container = document.getElementById(domId);
-    mufasaIframe = <HTMLIFrameElement>createElement('iframe', {
+    const container = document.getElementById(domId);
+    const mufasaIframe = createElement('iframe', {
       id: 'mufasa-iframe',
       name: 'mufasa-iframe',
       src: url,
@@ -35,6 +37,10 @@ const paymentForm = ({
       }
 
       switch (eventData.action) {
+        case 'Sequra.invalid_form': {
+          onFormErrors();
+          break;
+        }
         case 'Sequra.card_data_fulfilled': {
           onCardDataFulfilled();
           break;
@@ -67,7 +73,7 @@ const paymentForm = ({
             frameborder: '0',
             allowtransparency: 'true',
             scrolling: 'no',
-            class: 'hidden', // ADD iframe-3ds?
+            class: 'hidden',
             style: 'border-width:0px;position:absolute;left:0px;top:0px;height:100%;width:100%;',
           });
 
@@ -85,11 +91,12 @@ const paymentForm = ({
         case 'Sequra.3ds_authentication_closed':
           onScaClosed();
         case 'Sequra.new_form_fields':
-        case 'Sequra.start_synchronization_polling': {
+          // falls through
+        case 'Sequra.start_synchronization_polling':
           scaWrapper?.remove();
           scaWrapper = null;
           mufasaIframe.contentWindow.postMessage(JSON.stringify(eventData), url);
-        }
+          break;
       }
     };
     listenPostMessages(eventListener);
@@ -110,7 +117,7 @@ const paymentForm = ({
           action: 'Sequra.iframe_submit',
         }),
         '*',
-      ); // TODO: review origin
+      );
     };
     const unbind = () => window.removeEventListener('message', eventListener);
 
