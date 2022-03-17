@@ -3,7 +3,7 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/golive"
   },
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A library to integrate the Mufasa iframe",
   "main": "dist/index.js",
   "types": "src/types.d.ts",
